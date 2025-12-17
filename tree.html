@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pulsar Polar Animation</title>
+
+<style>
+html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent;
+}
+
+.container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent;
+}
+
+canvas {
+    display: block;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <canvas id="polar" width="600" height="600"></canvas>
+</div>
+
+<script>
+/* ---------- DATA ---------- */
+// Convert angles to Radians
+const angles=[0.15,0.40,0.75,0.90,1.05,1.25,1.40,1.50,1.65,1.80,1.95,0.05,0.25,0.55].map(a=>a*Math.PI);
+const distances=[0.8,0.5,0.7,1.0,0.9,0.6,0.85,0.75,0.95,0.65,0.5,0.8,0.7,0.9];
+const galAngle=3*Math.PI/2, galDist=3.0;
+
+/* ---------- CANVAS SETUP ---------- */
+const c=document.getElementById("polar");
+const ctx=c.getContext("2d");
+const cx=c.width/2, cy=c.height/2;
+const scale=250/galDist;
+
+/* ---------- HELPERS ---------- */
+// Convert Polar coordinates to Cartesian (x,y)
+function polar(a,r){
+    return {
+        x: cx + Math.cos(a)*r*scale,
+        y: cy - Math.sin(a)*r*scale
+    };
+}
+
+// Draw a line from the center (Sun) to a point
+function line(a,r,col,w=1){
+    const p=polar(a,r);
+    ctx.strokeStyle=col;
+    ctx.lineWidth=w;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.lineTo(p.x,p.y);
+    ctx.stroke();
+}
+
+// Draw a circular dot
+function dot(a,r,col,s=4){
+    const p=polar(a,r);
+    ctx.fillStyle=col;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,s,0,Math.PI*2);
+    ctx.fill();
+}
+
+// Draw binary code tick marks (Red)
+function tick(a,r){
+    const p=polar(a,r);
+    ctx.strokeStyle="red";
+    ctx.beginPath();
+    ctx.moveTo(p.x,p.y-3);
+    ctx.lineTo(p.x,p.y+3);
+    ctx.stroke();
+}
+
+// Draw a star shape for the center (The Sun)
+function star(a,r,col,R=8,r2=4){
+    const p=polar(a,r);
+    ctx.fillStyle=col;
+    ctx.beginPath();
+    for(let i=0;i<10;i++){
+        const ang=-Math.PI/2+i*Math.PI/5;
+        const rad=(i%2===0)?R:r2;
+        ctx.lineTo(
+            p.x + Math.cos(ang)*rad,
+            p.y + Math.sin(ang)*rad
+        );
+    }
+    ctx.closePath();
+    ctx.fill();
+}
+
+/* ---------- QUEUE ELEMENTS ---------- */
+let items=[{t:"gline"},{t:"gmark"}];
+
+angles.forEach((a,i)=>{
+    const d = distances[i];
+    items.push({t:"pline",a:a,d:d});
+    items.push({t:"pend",a:a,d:d}); // Light blue dot at the end of the pulsar line
+    for(let r=0.1;r<d*0.95;r+=d/10){
+        items.push({t:"tick",a:a,r:r});
+    }
+});
+
+/* ---------- ANIMATION LOOP ---------- */
+let i=0;
+const timer=setInterval(()=>{
+    if(i>=items.length){
+        clearInterval(timer);
+        return;
+    }
+
+    const e=items[i];
+
+    // Stage by stage rendering
+    if(e.t==="gline") line(galAngle,galDist,"brown",2);
+    if(e.t==="gmark") dot(galAngle,galDist,"brown",6);
+    if(e.t==="pline") line(e.a,e.d,"green",1.5);
+    if(e.t==="pend")  dot(e.a,e.d,"#7fdcff",4); // Light Blue Circle (Pulsar)
+    if(e.t==="tick")  tick(e.a,e.r);
+
+    /* KEEP SUN ON TOP LAYER */
+    star(0,0,"yellow");
+
+    i++;
+},100);
+</script>
+
+</body>
+</html>
